@@ -1,0 +1,15 @@
+# Pipes 10x10 - input
+# Nguon: puzzle-pipes.com, Puzzle ID 723,397
+# Ma o: tong cac huong co lo, Tren=1 Phai=2 Duoi=4 Trai=8 (hex)
+# source (cham do, dong cot tinh tu 0): 5 5
+10 10
+2 C 1 8 5 9 2 3 A 4
+1 A 5 4 A 7 7 B 9 4
+9 B 6 D E E C 2 C 3
+8 B 4 5 E 8 6 5 E 6
+1 D C 7 6 E 9 1 2 8
+8 7 E 7 3 3 A D A 3
+4 A B C 3 5 E B 1 4
+2 5 5 6 3 8 5 9 B 6
+6 A D A D 4 D 6 E C
+8 8 7 2 C 5 A 3 8 2
