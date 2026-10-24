@@ -55,7 +55,7 @@ Bản chạy chính thức phải chạy trên **một máy duy nhất**, đóng
 ```text
 btl1/
 ├── main.py              TV1  chạy 1 cặp bài – giải thuật – input
-├── core/                TV1  problem.py, search.py, tracer.py, benchmark.py, registry.py
+├── core/                TV1  problem.py, search.py, tracer.py, benchmark.py, registry.py, check.py
 ├── examples/nqueens.py  TV1  bài đồ chơi + ví dụ mẫu cách cài một Problem
 ├── puzzles/_template.py TV1  file mẫu để TV2, TV3 chép
 ├── puzzles/pipes.py     TV2
@@ -76,6 +76,13 @@ Mỗi người **chỉ sửa thư mục của mình**. Chỉ TV1 sửa `core/`.
 2. Cài các hàm theo interface trong `core/problem.py`. Ví dụ hoàn chỉnh: `examples/nqueens.py`.
 3. Module phải có hàm `load_problem(path) -> Problem`.
 4. Đặt file input vào `inputs/pipes/` (hoặc `inputs/tents/`), đặt tên `01.txt`, `02.txt`… theo độ khó tăng dần.
+5. **Trước khi tạo Pull Request**, tự kiểm tra code bằng:
+
+   ```bash
+   python -m core.check pipes inputs/pipes/01.txt
+   ```
+
+   Script báo `0 lỗi` thì mới gửi Pull Request. Mỗi lỗi đều kèm gợi ý cách sửa.
 
 **Ba quy ước bắt buộc:**
 
