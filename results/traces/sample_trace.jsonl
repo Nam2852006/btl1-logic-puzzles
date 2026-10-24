@@ -1,0 +1,11 @@
+{"type": "meta", "puzzle": "nqueens", "algorithm": "dfs", "input": "inputs/nqueens/04.txt", "size": "4x4", "total_steps": 9, "recorded_steps": 9, "truncated": false}
+{"type": "step", "step": 1, "event": "expand", "grid": [[".", ".", ".", "."], [".", ".", ".", "."], [".", ".", ".", "."], [".", ".", ".", "."]], "h": 4, "frontier": 0, "depth": 0}
+{"type": "step", "step": 2, "event": "expand", "grid": [["Q", ".", ".", "."], [".", ".", ".", "."], [".", ".", ".", "."], [".", ".", ".", "."]], "h": 3, "frontier": 3, "depth": 1}
+{"type": "step", "step": 3, "event": "expand", "grid": [["Q", ".", ".", "."], [".", ".", "Q", "."], [".", ".", ".", "."], [".", ".", ".", "."]], "h": 2, "frontier": 4, "depth": 2}
+{"type": "step", "step": 4, "event": "expand", "grid": [["Q", ".", ".", "."], [".", ".", ".", "Q"], [".", ".", ".", "."], [".", ".", ".", "."]], "h": 2, "frontier": 3, "depth": 2}
+{"type": "step", "step": 5, "event": "expand", "grid": [["Q", ".", ".", "."], [".", ".", ".", "Q"], [".", "Q", ".", "."], [".", ".", ".", "."]], "h": 1, "frontier": 3, "depth": 3}
+{"type": "step", "step": 6, "event": "expand", "grid": [[".", "Q", ".", "."], [".", ".", ".", "."], [".", ".", ".", "."], [".", ".", ".", "."]], "h": 3, "frontier": 2, "depth": 1}
+{"type": "step", "step": 7, "event": "expand", "grid": [[".", "Q", ".", "."], [".", ".", ".", "Q"], [".", ".", ".", "."], [".", ".", ".", "."]], "h": 2, "frontier": 2, "depth": 2}
+{"type": "step", "step": 8, "event": "expand", "grid": [[".", "Q", ".", "."], [".", ".", ".", "Q"], ["Q", ".", ".", "."], [".", ".", ".", "."]], "h": 1, "frontier": 2, "depth": 3}
+{"type": "step", "step": 9, "event": "expand", "grid": [[".", "Q", ".", "."], [".", ".", ".", "Q"], ["Q", ".", ".", "."], [".", ".", "Q", "."]], "h": 0, "frontier": 2, "depth": 4}
+{"type": "result", "success": true, "grid": [[".", "Q", ".", "."], [".", ".", ".", "Q"], ["Q", ".", ".", "."], [".", ".", "Q", "."]], "nodes_expanded": 9, "restarts": 0}
