@@ -198,6 +198,12 @@ def make_charts(rows, out_dir):
     return saved
 
 
+def list_inputs(puzzle):
+    """Các file đề trong inputs/<puzzle>/, BỎ QUA file lời giải *.sol.txt."""
+    paths = glob.glob(os.path.join("inputs", puzzle, "*.txt"))
+    return sorted(p for p in paths if not p.endswith(".sol.txt"))
+
+
 # ----------------------------------------------------------------------
 # Chương trình chính
 # ----------------------------------------------------------------------
@@ -232,7 +238,7 @@ def main(argv=None) -> int:
         if not is_available(puzzle):
             print(f"[bỏ qua] {puzzle}: chưa có module {PUZZLES[puzzle]}")
             continue
-        inputs = sorted(glob.glob(os.path.join("inputs", puzzle, "*.txt")))
+        inputs = list_inputs(puzzle)
         if not inputs:
             print(f"[bỏ qua] {puzzle}: không có file nào trong inputs/{puzzle}/")
             continue

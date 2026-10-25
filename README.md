@@ -75,7 +75,7 @@ Mỗi người **chỉ sửa thư mục của mình**. Chỉ TV1 sửa `core/`.
 1. Chép `puzzles/_template.py` thành `puzzles/pipes.py` (hoặc `tents.py`).
 2. Cài các hàm theo interface trong `core/problem.py`. Ví dụ hoàn chỉnh: `examples/nqueens.py`.
 3. Module phải có hàm `load_problem(path) -> Problem`.
-4. Đặt file input vào `inputs/pipes/` (hoặc `inputs/tents/`), đặt tên `01.txt`, `02.txt`… theo độ khó tăng dần.
+4. Đặt file input vào `inputs/pipes/` (hoặc `inputs/tents/`), đặt tên `01.txt`, `02.txt`… theo độ khó tăng dần. File lời giải đặt tên `01.sol.txt`, `02.sol.txt`… để benchmark tự bỏ qua.
 5. **Trước khi tạo Pull Request**, tự kiểm tra code bằng:
 
    ```bash
