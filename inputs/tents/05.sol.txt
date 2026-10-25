@@ -1,0 +1,11 @@
+10 10
+....TA.ATA
+...A..T..T
+.A.T..A...
+TTT.....TA
+A.A.A...T.
+...TT.ATA.
+.ATA.....T
+.........A
+T.T.TA...T
+A.A....ATA

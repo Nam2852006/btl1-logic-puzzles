@@ -1,0 +1,16 @@
+15 15
+TA.....A.ATAT.A
+....AT.T...T..T
+ATA..TA.TA.A..T
+..T...........A
+TATA...AT.ATA..
+.....AT.....T..
+.A...T.AT......
+.T.T.A.TTA..ATA
+TA.A...A.T....T
+.........A.T...
+ATA.A.TA...A.TA
+T...T.T.TA.....
+.A.TA.A......T.
+TT.......T.ATA.
+ATA.ATAT.A.....
