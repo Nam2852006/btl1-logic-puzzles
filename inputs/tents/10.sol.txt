@@ -1,0 +1,26 @@
+25 25
+..A....ATA...TA..ATA.AT.T
+T.T.A..TT..A.....T.T.T..A
+ATA.T.A.A..T.A...A.ATA...
+T.....T......T......T..AT
+A.TA..A..ATA.ATATA..A....
+...T..T..T.....T..T......
+A..A.ATA.AT..A....A.TATA.
+T......T...ATTTA..T......
+T.ATTATA.AT..AT...A...A.T
+A...............AT....T.A
+..A.AT.A....AT...T.T.A...
+A.T.T..TTA.....A.A.A.TTA.
+T.ATA..AT..A...T.T...AT..
+AT......TA.T.ATA.A.A.....
+TTA..TA...T.TT..T..T.A..A
+A...A...A.A.ATA.A..A.T..T
+T.A.T...T.....T....T....A
+A.T...AT.TATA.A.TA...AT.T
+TTA...............TA..T.A
+A.....A.TA.A.....A....A.T
+T.TA..T....TTATA.T.......
+A.....ATTA..........TA..T
+...A.........AT...AT....A
+A.TTTTA...A.....A...A...T
+T.A.A...ATTTATA.TTA.TTA.A
