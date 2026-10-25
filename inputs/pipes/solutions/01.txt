@@ -1,0 +1,9 @@
+# Pipes 4x4 - solution
+# Nguon: puzzle-pipes.com, Puzzle ID 3,869,919
+# Ma o: tong cac huong co lo, Tren=1 Phai=2 Duoi=4 Trai=8 (hex)
+# source (cham do, dong cot tinh tu 0): 2 2
+4 4
+2 A A C
+4 6 8 5
+3 B A D
+2 A A 9

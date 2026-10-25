@@ -1,0 +1,12 @@
+# Pipes 7x7 - input
+# Nguon: puzzle-pipes.com, Puzzle ID 7,075,572
+# Ma o: tong cac huong co lo, Tren=1 Phai=2 Duoi=4 Trai=8 (hex)
+# source (cham do, dong cot tinh tu 0): 3 3
+7 7
+9 2 4 4 4 8 6
+6 7 B 3 E 5 B
+2 A 3 2 4 5 B
+3 E E 7 E E C
+C 9 5 5 1 7 8
+4 B C A 2 7 9
+4 E 2 3 8 8 C
