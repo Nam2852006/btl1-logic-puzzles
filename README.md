@@ -35,6 +35,16 @@ python -m core.benchmark --puzzles nqueens            # thử với bài đồ c
 ```
 
 Kết quả: `results/benchmark.csv` (mở được bằng Excel) và biểu đồ trong `results/charts/`.
+
+**Bảng phụ so sánh biến thể** (cho phần giải thích trong báo cáo):
+
+```bash
+python -m core.benchmark --variants --restarts 100 --timeout 120 --repeats 1
+```
+
+So sánh Tents A\* với `h=tension` và `h=naive`, Pipes Hill Climbing với `sideways=50` và `sideways=0`.
+Danh sách biến thể nằm trong `VARIANTS` của `core/registry.py`. Kết quả ghi riêng vào
+`results/benchmark_variants.csv` và các biểu đồ `results/charts/variants_*.png`, không ảnh hưởng bảng chính.
 Bản chạy chính thức phải chạy trên **một máy duy nhất**, đóng các ứng dụng nặng khi chạy.
 
 Ý nghĩa các cột CSV:

@@ -7,6 +7,7 @@ Cách chạy (từ thư mục gốc của dự án):
     python -m core.benchmark                         # chạy pipes + tents
     python -m core.benchmark --puzzles nqueens       # chạy bài đồ chơi để thử
     python -m core.benchmark --timeout 60 --repeats 1  # chạy nhanh khi đang thử
+    python -m core.benchmark --variants              # bảng phụ so sánh biến thể
 
 Phương pháp đo (ghi vào báo cáo):
   - Thời gian: time.perf_counter(), chạy --repeats lần, lấy TRUNG VỊ.
@@ -32,10 +33,10 @@ import sys
 import time
 import tracemalloc
 
-from core.registry import PLAN, PUZZLES, is_available, load_problem
+from core.registry import PLAN, PUZZLES, VARIANTS, is_available, load_problem
 from core.search import run
 
-FIELDS = ["puzzle", "input", "size", "algorithm", "status", "success",
+FIELDS = ["puzzle", "input", "size", "algorithm", "variant", "status", "success",
           "time_s", "peak_kb", "nodes_expanded", "nodes_generated",
           "max_frontier", "restarts", "note"]
 
@@ -43,9 +44,9 @@ FIELDS = ["puzzle", "input", "size", "algorithm", "status", "success",
 # ----------------------------------------------------------------------
 # Tiến trình con
 # ----------------------------------------------------------------------
-def _worker(puzzle, algo, input_path, mode, hc_kwargs, out_q):
+def _worker(puzzle, algo, input_path, mode, hc_kwargs, out_q, problem_kwargs=None):
     try:
-        problem = load_problem(puzzle, input_path)        # ngoài vùng đo
+        problem = load_problem(puzzle, input_path, **(problem_kwargs or {}))  # ngoài vùng đo
         if mode == "time":
             t0 = time.perf_counter()
             res = run(algo, problem, tracer=None, **hc_kwargs)
@@ -66,12 +67,12 @@ def _worker(puzzle, algo, input_path, mode, hc_kwargs, out_q):
         out_q.put({"ok": False, "error": f"{type(exc).__name__}: {exc}"})
 
 
-def _run_isolated(puzzle, algo, input_path, mode, hc_kwargs, timeout):
+def _run_isolated(puzzle, algo, input_path, mode, hc_kwargs, timeout, problem_kwargs=None):
     """Chạy _worker trong tiến trình con. Trả về (status, dữ liệu)."""
     ctx = mp.get_context("spawn")      # chạy giống nhau trên Windows/macOS/Linux
     out_q = ctx.Queue()
     proc = ctx.Process(target=_worker,
-                       args=(puzzle, algo, input_path, mode, hc_kwargs, out_q))
+                       args=(puzzle, algo, input_path, mode, hc_kwargs, out_q, problem_kwargs))
     proc.start()
     deadline = time.monotonic() + timeout
     data = None
@@ -99,14 +100,17 @@ def _run_isolated(puzzle, algo, input_path, mode, hc_kwargs, timeout):
 # ----------------------------------------------------------------------
 # Một cặp (puzzle, algo, input)
 # ----------------------------------------------------------------------
-def measure_one(puzzle, algo, input_path, timeout, repeats, hc_kwargs):
+def measure_one(puzzle, algo, input_path, timeout, repeats, hc_kwargs,
+                problem_kwargs=None, variant=""):
     row = {k: "" for k in FIELDS}
-    row.update(puzzle=puzzle, algorithm=algo, input=os.path.basename(input_path))
+    row.update(puzzle=puzzle, algorithm=algo, variant=variant,
+               input=os.path.basename(input_path))
 
     times = []
     first = None
     for _ in range(repeats):
-        status, data = _run_isolated(puzzle, algo, input_path, "time", hc_kwargs, timeout)
+        status, data = _run_isolated(puzzle, algo, input_path, "time", hc_kwargs, timeout,
+                                     problem_kwargs)
         if status != "ok":
             row["status"] = status
             row["note"] = data.get("error", f"vượt {timeout} s") if data else f"vượt {timeout} s"
@@ -116,7 +120,8 @@ def measure_one(puzzle, algo, input_path, timeout, repeats, hc_kwargs):
         times.append(data["time_s"])
         first = first or data
 
-    status, mem = _run_isolated(puzzle, algo, input_path, "memory", hc_kwargs, timeout * 3)
+    status, mem = _run_isolated(puzzle, algo, input_path, "memory", hc_kwargs, timeout * 3,
+                                problem_kwargs)
     row.update(
         status="ok",
         size=first["size"],
@@ -135,7 +140,9 @@ def measure_one(puzzle, algo, input_path, timeout, repeats, hc_kwargs):
 # ----------------------------------------------------------------------
 # Biểu đồ
 # ----------------------------------------------------------------------
-def make_charts(rows, out_dir):
+def make_charts(rows, out_dir, series="algorithm", prefix=""):
+    """series="algorithm": mỗi cột là một giải thuật (bảng chính);
+    series="variant": mỗi cột là một biến thể (bảng so sánh)."""
     try:
         import matplotlib
         matplotlib.use("Agg")
@@ -152,15 +159,18 @@ def make_charts(rows, out_dir):
     for puzzle in sorted({r["puzzle"] for r in rows}):
         prow = [r for r in rows if r["puzzle"] == puzzle]
         inputs = sorted({r["input"] for r in prow})
-        algos = [a for a in PLAN.get(puzzle, []) if any(r["algorithm"] == a for r in prow)] \
-            or sorted({r["algorithm"] for r in prow})
+        if series == "algorithm":
+            algos = [a for a in PLAN.get(puzzle, []) if any(r["algorithm"] == a for r in prow)] \
+                or sorted({r["algorithm"] for r in prow})
+        else:
+            algos = list(dict.fromkeys(r[series] for r in prow))   # giữ thứ tự xuất hiện
         width = 0.8 / max(len(algos), 1)
         for key, label in metrics:
             fig, ax = plt.subplots(figsize=(max(6, 1.4 * len(inputs)), 4))
             for i, algo in enumerate(algos):
                 xs, ys, timeouts = [], [], []
                 for j, inp in enumerate(inputs):
-                    r = next((r for r in prow if r["algorithm"] == algo and r["input"] == inp), None)
+                    r = next((r for r in prow if r[series] == algo and r["input"] == inp), None)
                     x = j + (i - (len(algos) - 1) / 2) * width
                     if r is None:
                         continue
@@ -173,7 +183,8 @@ def make_charts(rows, out_dir):
                         continue
                     xs.append(x)
                     ys.append(max(y, 1e-6))
-                bars = ax.bar(xs, ys, width, label=algo.upper())
+                bars = ax.bar(xs, ys, width,
+                              label=algo.upper() if series == "algorithm" else algo)
                 color = bars.patches[0].get_facecolor() if bars.patches else None
                 for x in timeouts:
                     # x theo dữ liệu, y theo tỉ lệ trục (0.02 = sát đáy)
@@ -187,11 +198,12 @@ def make_charts(rows, out_dir):
                 sizes.append(f"{inp}\n{r['size']}" if r else inp)
             ax.set_xticklabels(sizes, fontsize=8)
             ax.set_ylabel(label + " - thang log")
-            ax.set_title(f"{puzzle.capitalize()}: {label}")
+            ax.set_title(("So sánh biến thể - " if series != "algorithm" else "")
+                         + f"{puzzle.capitalize()}: {label}")
             ax.legend()
             ax.grid(axis="y", alpha=0.3)
             fig.tight_layout()
-            path = os.path.join(out_dir, f"{puzzle}_{key}.png")
+            path = os.path.join(out_dir, f"{prefix}{puzzle}_{key}.png")
             fig.savefig(path, dpi=150)
             plt.close(fig)
             saved.append(path)
@@ -215,7 +227,10 @@ def main(argv=None) -> int:
                    help="ghi đè danh sách giải thuật trong core/registry.py (PLAN)")
     p.add_argument("--timeout", type=float, default=300, help="giây cho mỗi lần chạy")
     p.add_argument("--repeats", type=int, default=3, help="số lần đo thời gian, lấy trung vị")
-    p.add_argument("--out", default=os.path.join("results", "benchmark.csv"))
+    p.add_argument("--variants", action="store_true",
+                   help="chạy bảng PHỤ so sánh biến thể (VARIANTS trong core/registry.py)")
+    p.add_argument("--out", default=None,
+                   help="mặc định results/benchmark.csv, hoặc results/benchmark_variants.csv với --variants")
     p.add_argument("--charts", default=os.path.join("results", "charts"))
     p.add_argument("--restarts", type=int, default=20)
     p.add_argument("--sideways", type=int, default=0)
@@ -242,10 +257,19 @@ def main(argv=None) -> int:
         if not inputs:
             print(f"[bỏ qua] {puzzle}: không có file nào trong inputs/{puzzle}/")
             continue
-        for algo in (args.algos or PLAN.get(puzzle, ["dfs"])):
+        if args.variants:
+            jobs = [(v["algo"], {**hc_kwargs, **v.get("hc", {})}, v.get("problem"), v["name"])
+                    for v in VARIANTS.get(puzzle, [])]
+            if not jobs:
+                print(f"[bỏ qua] {puzzle}: không có biến thể nào trong VARIANTS")
+        else:
+            jobs = [(a, hc_kwargs, None, "") for a in (args.algos or PLAN.get(puzzle, ["dfs"]))]
+        for algo, hc, prob_kw, variant in jobs:
+            name = variant or algo
             for path in inputs:
-                print(f"  {puzzle:8} {algo:6} {os.path.basename(path):12} ... ", end="", flush=True)
-                row = measure_one(puzzle, algo, path, args.timeout, args.repeats, hc_kwargs)
+                print(f"  {puzzle:8} {name:16} {os.path.basename(path):12} ... ", end="", flush=True)
+                row = measure_one(puzzle, algo, path, args.timeout, args.repeats, hc,
+                                  prob_kw, variant)
                 rows.append(row)
                 if row["status"] == "ok":
                     print(f"{'OK ' if row['success'] else 'FAIL'} {float(row['time_s']):9.4f}s "
@@ -253,6 +277,9 @@ def main(argv=None) -> int:
                 else:
                     print(f"{row['status'].upper()} {row['note']}")
 
+    if args.out is None:
+        args.out = os.path.join("results",
+                                "benchmark_variants.csv" if args.variants else "benchmark.csv")
     os.makedirs(os.path.dirname(args.out) or ".", exist_ok=True)
     with open(args.out, "w", newline="", encoding="utf-8-sig") as f:   # utf-8-sig: Excel đọc đúng tiếng Việt
         writer = csv.DictWriter(f, fieldnames=FIELDS)
@@ -260,7 +287,9 @@ def main(argv=None) -> int:
         writer.writerows(rows)
     print(f"\nĐã ghi {len(rows)} dòng vào {args.out}")
 
-    for path in make_charts(rows, args.charts):
+    charts = (make_charts(rows, args.charts, series="variant", prefix="variants_")
+              if args.variants else make_charts(rows, args.charts))
+    for path in charts:
         print(f"Đã vẽ {path}")
     return 0
 
