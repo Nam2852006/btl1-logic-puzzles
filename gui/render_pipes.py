@@ -1,10 +1,11 @@
 """gui/render_pipes.py - Vẽ lưới Pipes. Người sở hữu: TV4.
 
-QUY ƯỚC encode() của Pipes (cần TV2 xác nhận; chỉ sửa parse_cell nếu TV2 chọn khác):
-  Mỗi ô là một chuỗi các chữ cái N, E, S, W = các phía đang HỞ của ô ống sau khi xoay.
-    "NS"  ống thẳng đứng      "NE"  ống cong        "NES" ống chữ T
-    "N"   đầu cụt             "NESW" ống chữ thập   ""    ô trống
-    "?"   ô chưa gán (DFS gán dần từng ô)
+QUY ƯỚC encode() của Pipes (theo puzzles/pipes.py của TV2, đã thống nhất):
+  Mỗi ô là MỘT ký tự hex "0".."F" = bitmask các phía đang HỞ của ô ống sau khi xoay:
+    Trên = 1, Phải = 2, Dưới = 4, Trái = 8.
+    Ví dụ: "5" = 1+4 = ống thẳng đứng, "A" = 2+8 = ống thẳng ngang,
+           "C" = 4+8 = ống cong dưới-trái, "D" = 1+4+8 = chữ T, "4" = đầu cụt quay xuống.
+  "." = ô chưa gán (DFS gán dần từng ô). "?" cũng được hiểu là chưa gán.
 Vì ô chứa sẵn các phía hở nên GUI không cần biết hình dạng gốc hay góc xoay.
 
 Màu: xanh = phía hở khớp với láng giềng; đỏ = đầu hở không khớp (lỗi, h tăng);
@@ -23,11 +24,19 @@ PIPE_BAD = (220, 38, 38)
 PIPE_PENDING = (234, 138, 0)
 
 
+# Bit trong mã hex của TV2 -> tên phía dùng trong DIRS
+HEX_BITS = {1: "N", 2: "E", 4: "S", 8: "W"}
+
+
 def parse_cell(v):
-    """Trả về (tập phía hở, chưa_gán). Sửa hàm này nếu TV2 dùng quy ước khác."""
-    if v is None or v == "?":
+    """Trả về (tập phía hở, chưa_gán) từ một ô do encode() của TV2 xuất ra."""
+    if v is None or v in (".", "?"):
         return set(), True
-    return {ch for ch in str(v).upper() if ch in DIRS}, False
+    try:
+        mask = int(str(v), 16)
+    except ValueError:            # ký hiệu lạ: coi như chưa gán thay vì làm hỏng GUI
+        return set(), True
+    return {name for bit, name in HEX_BITS.items() if mask & bit}, False
 
 
 def draw(surf, rect, grid, changed, fonts):
