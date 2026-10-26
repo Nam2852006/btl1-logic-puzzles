@@ -231,7 +231,7 @@ def hill_climbing(problem: Problem, tracer=None, restarts: int = 20,
         current_h = problem.h(current)
         side_moves = 0
         if tracer is not None:
-            tracer.log(problem, current, 0, "restart" if attempt else "move", 0)
+            tracer.log(problem, current, 0, "restart" if attempt else "start", 0)
 
         for step in range(max_steps):
             expanded += 1

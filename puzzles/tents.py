@@ -27,7 +27,7 @@ Dùng (cho TV1 / main.py)
     p = load_problem('inputs/tents/03.txt')                 # mặc định: h_mode='tension', prune='basic'
     p = load_problem(path, h_mode='naive')                  # A* với h = số cây còn lại (để so sánh)
     p = load_problem(path, prune='full')                    # is_valid có thêm forward checking
-    p.encode(state)                                         # list[list[str]] cho GUI; p.rows, p.cols là số gợi ý
+    p.encode(state)                                         # lưới (R+1)x(C+1) cho GUI, kèm số gợi ý hàng/cột
     p.size_label()                                          # '30x30'
     p.state_from_tents(tents)                               # tập ô lều -> trạng thái (vd. phát lại lời giải)
 """
@@ -144,11 +144,13 @@ class TentsProblem(Problem):
 
     # ------------------------------------------------------------------ GUI
     def encode(self, state):
-        """Lưới để vẽ: list các list str, 'T' cây, 'A' lều, '.' trống. Số gợi ý: self.rows, self.cols."""
+        """Lưới (R+1)x(C+1) cho GUI, theo quy ước của gui/render_tents.py:
+        R hàng đầu, C cột đầu là bàn chơi ('T' cây, 'A' lều, '.' trống);
+        cột cuối = số lều mỗi hàng, hàng cuối = số lều mỗi cột (int), ô góc dưới phải = ''."""
         g = [list(row) for row in self.grid]
         for (r, c) in state:
             g[r][c] = 'A'
-        return g
+        return [row + [self.rows[r]] for r, row in enumerate(g)] + [list(self.cols) + ['']]
 
     def size_label(self):
         """Nhãn kích thước cho benchmark/GUI, vd. '30x30'."""

@@ -16,6 +16,7 @@ from __future__ import annotations
 import argparse
 import glob
 import json
+import math
 import os
 import sys
 
@@ -40,11 +41,24 @@ RENDERERS = {"pipes": render_pipes, "tents": render_tents}
 PUZZLE_NAME = {"pipes": "Pipes", "tents": "Tents", "nqueens": "N-Queens"}
 ALGO_NAME = {"dfs": "DFS", "bfs": "BrFS", "astar": "A*", "hc": "Hill Climbing"}
 EVENT_LABEL = {
+    "start": "Trạng thái xuất phát",
     "expand": "Mở rộng một nút",
     "move": "Chuyển sang láng giềng tốt nhất",
     "restart": "Random restart (bắt đầu lại)",
     "result": "Kết quả cuối cùng",
 }
+
+
+def _finite(h):
+    """Giá trị h là số hữu hạn -> trả về số đó. Ngõ cụt ("inf" hoặc Infinity) hay thiếu -> None."""
+    if isinstance(h, (int, float)) and math.isfinite(h):
+        return h
+    return None
+
+
+def _is_dead_end(h):
+    """h = vô cùng: trạng thái ngõ cụt (vd. heuristic tension của Tents)."""
+    return h == "inf" or (isinstance(h, float) and math.isinf(h))
 
 
 # ----------------------------------------------------------------------
@@ -114,8 +128,10 @@ class Player:
 def draw_sparkline(surf, rect, player, fonts):
     pygame.draw.rect(surf, (248, 249, 251), rect, border_radius=6)
     pygame.draw.rect(surf, theme.LINE, rect, 1, border_radius=6)
-    hs = [f["h"] if isinstance(f["h"], (int, float)) else 0 for f in player.frames]
-    lo, hi = min(hs), max(hs)
+    vals = [_finite(f["h"]) for f in player.frames]
+    finite = [v for v in vals if v is not None]
+    lo, hi = (min(finite), max(finite)) if finite else (0, 0)
+    hs = [hi if v is None else v for v in vals]      # ngõ cụt / thiếu h: vẽ ở đỉnh biểu đồ
     span = (hi - lo) or 1
     w, h = rect.w - 16, rect.h - 24
     n = len(hs)
@@ -164,11 +180,18 @@ def draw_panel(surf, player, fonts):
         text(surf, fonts.sized(14), label, theme.MUTED, (x + col * 190, y))
         text(surf, fonts.sized(22, True), "-" if value is None else value, color, (x + col * 190, y + 18))
 
-    prev_h = player.frames[player.idx - 1]["h"] if player.idx else None
+    cur_h = _finite(f["h"])
+    prev_h = _finite(player.frames[player.idx - 1]["h"]) if player.idx else None
     h_color = theme.INK
-    if isinstance(f["h"], (int, float)) and isinstance(prev_h, (int, float)):
-        h_color = theme.GOOD if f["h"] < prev_h else (theme.BAD if f["h"] > prev_h else theme.INK)
-    stat("Giá trị h", f"{f['h']:g}" if isinstance(f["h"], (int, float)) else f["h"], 0, h_color)
+    if cur_h is not None and prev_h is not None:
+        h_color = theme.GOOD if cur_h < prev_h else (theme.BAD if cur_h > prev_h else theme.INK)
+    if cur_h is not None:
+        h_text = f"{cur_h:g}"
+    elif _is_dead_end(f["h"]):
+        h_text, h_color = "vô cùng (ngõ cụt)", theme.BAD
+    else:
+        h_text = None
+    stat("Giá trị h", h_text, 0, h_color)
     stat("Frontier", f["frontier"], 1)
     y += 56
     stat("Độ sâu", f["depth"], 0)

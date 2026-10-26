@@ -124,8 +124,11 @@ class TestEncode(unittest.TestCase):
             p, sol = load(path)
             with open(path.replace('.txt', '.sol.txt')) as f:
                 lines = [ln.strip() for ln in f if ln.strip()]
-            self.assertEqual(p.encode(sol), [list(row) for row in lines[1:1 + p.R]])
-            self.assertEqual(p.encode(()), [list(row) for row in p.grid])
+            g = p.encode(sol)
+            self.assertEqual([row[:-1] for row in g[:-1]], [list(row) for row in lines[1:1 + p.R]])
+            self.assertEqual([row[-1] for row in g[:-1]], p.rows)
+            self.assertEqual(g[-1], p.cols + [''])
+            self.assertEqual([row[:-1] for row in p.encode(())[:-1]], [list(row) for row in p.grid])
             self.assertIsInstance(p.encode(sol)[0], list)
 
     def test_size_label(self):

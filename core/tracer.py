@@ -11,6 +11,7 @@ Người sở hữu: TV1.
                  "nodes_expanded": ..., "restarts": ...}
 
 Giá trị "event":
+  "start"   : Hill Climbing ở trạng thái xuất phát (ngẫu nhiên) của lần thử đầu
   "expand"  : DFS/BrFS/A* mở rộng một nút
   "move"    : Hill Climbing chuyển sang láng giềng tốt nhất
   "restart" : Hill Climbing bắt đầu lại từ một trạng thái ngẫu nhiên
@@ -21,6 +22,7 @@ giải thuật và làm sai số đo thời gian.
 from __future__ import annotations
 
 import json
+import math
 import os
 from typing import Optional
 
@@ -38,12 +40,15 @@ class Tracer:
         if len(self.events) >= self.max_steps:
             self.truncated = True
             return
+        h = problem.h(state)
+        if isinstance(h, float) and not math.isfinite(h):
+            h = "inf"   # ngõ cụt (h = vô cùng). JSON chuẩn không có Infinity; GUI hiểu "inf".
         self.events.append({
             "type": "step",
             "step": self.total_steps,
             "event": event,
             "grid": problem.encode(state),
-            "h": problem.h(state),
+            "h": h,
             "frontier": frontier,
             "depth": depth,
         })
