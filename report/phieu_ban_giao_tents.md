@@ -154,7 +154,7 @@ Bài học từ bảng trên: sức mạnh của A\* ở Tents nằm ở lượn
 | Vấn đề | Nguyên nhân | Cách giải quyết |
 | --- | --- | --- |
 | A\* dùng h\* = số cây còn lại chạy không nhanh hơn DFS | Mọi lời giải nằm cùng độ sâu T, nên f\* = T ở mọi nút. A\* thoái hóa thành tìm kiếm mù | Thiết kế h\* tension: thêm độ căng need/cap của hàng/cột, và trả về ∞ ở ngõ cụt |
-| GUI bị treo khi mở trace của A\* | Một số nút có h\* = ∞. Python ghi giá trị này thành `Infinity`, nhưng JSON chuẩn không có giá trị đó | Tracer ghi chuỗi `"inf"`, GUI hiểu đó là ngõ cụt |
+| GUI bị treo khi mở trace của DFS | DFS đi vào các nút ngõ cụt có h\* = ∞. Python ghi giá trị này thành `Infinity`, và biểu đồ h của GUI bị lỗi khi co giãn theo vô cực | Tracer ghi chuỗi `"inf"`; GUI hiểu đó là ngõ cụt và vẽ ở đỉnh biểu đồ thay vì treo |
 | GUI không vẽ được số gợi ý hàng/cột | Bản đầu của encode() chỉ trả về bàn chơi, còn `gui/render_tents.py` cần cả gợi ý | encode() trả về lưới (R+1)×(C+1): thêm cột gợi ý hàng và hàng gợi ý cột. Unit test cập nhật theo |
 | Không tải đề tự động từ puzzle-tents.com được | Site hiển thị đề bằng JavaScript, trong mã trang không có dữ liệu lưới | Chụp màn hình, nhận diện cây theo màu pixel, đọc số gợi ý từ ảnh phóng to, rồi dùng solver xác nhận mỗi đề có đúng một nghiệm |
 | DFS timeout ở đề 30×30 | Một lựa chọn sai ở cây thứ 3 chỉ lộ ra rất sâu bên dưới. Trong 60 s đầu, khoảng 95% số nút nằm dưới lựa chọn sai đó, và DFS chưa bao giờ vượt độ sâu 50/180 | Giữ nguyên để DFS vẫn là tìm kiếm mù, ghi "timeout" vào bảng và giải thích. Thêm chế độ `prune='full'` cho thí nghiệm phụ |
