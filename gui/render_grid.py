@@ -21,7 +21,9 @@ def fit_cells(rect, rows, cols, pad=0):
 
 
 def mark_changed(surf, x, y, cell):
-    pygame.draw.rect(surf, theme.HILITE, (x, y, cell, cell), 3)
+    """Viền vàng dày có viền tối: ô vừa đổi ở bước này."""
+    pygame.draw.rect(surf, theme.OUTLINE, (x - 1, y - 1, cell + 2, cell + 2), 8, border_radius=7)
+    pygame.draw.rect(surf, theme.YELLOW, (x + 2, y + 2, cell - 4, cell - 4), 4, border_radius=5)
 
 
 def draw(surf, rect, grid, changed, fonts):
@@ -30,16 +32,17 @@ def draw(surf, rect, grid, changed, fonts):
     if not rows or not cols:
         return
     x0, y0, cell = fit_cells(rect, rows, cols)
-    font = fonts.sized(max(12, int(cell * 0.5)), bold=True)
+    font = fonts.sized(max(12, int(cell * 0.55)), bold=True)
     for r in range(rows):
         for c in range(cols):
             x, y = x0 + c * cell, y0 + r * cell
-            shade = (236, 239, 244) if (r + c) % 2 == 0 else (250, 251, 253)
+            shade = (255, 236, 180) if (r + c) % 2 == 0 else (240, 208, 140)
             pygame.draw.rect(surf, shade, (x, y, cell, cell))
             v = str(grid[r][c])
             if v not in ("", "."):
-                color = theme.ACCENT if v == "Q" else theme.INK
-                theme.text(surf, font, v, color, (x + cell // 2, y + cell // 2), "center")
-            pygame.draw.rect(surf, theme.LINE, (x, y, cell, cell), 1)
-            if (r, c) in changed:
-                mark_changed(surf, x, y, cell)
+                color = theme.RED if v == "Q" else theme.WHITE
+                theme.text(surf, font, v, color, (x + cell // 2, y + cell // 2), "center",
+                           outline=theme.OUTLINE, ow=3)
+    pygame.draw.rect(surf, theme.OUTLINE, (x0, y0, cell * cols, cell * rows), 4)
+    for (r, c) in changed:
+        mark_changed(surf, x0 + c * cell, y0 + r * cell, cell)

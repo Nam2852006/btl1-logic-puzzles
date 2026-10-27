@@ -1,11 +1,11 @@
 """gui/render_tents.py - Vẽ lưới Tents. Người sở hữu: TV4.
 
-QUY ƯỚC encode() của Tents (cần TV3 xác nhận; chỉ sửa SYMBOLS / split_grid nếu TV3 chọn khác):
+QUY ƯỚC encode() của Tents (theo puzzles/tents.py của TV3):
   Lưới (R+1) x (C+1):
     R hàng đầu, C cột đầu = bàn chơi.   Cột cuối = số lều mỗi hàng (int).
     Hàng cuối = số lều mỗi cột (int).   Ô góc dưới phải = "".
   Ký hiệu ô bàn chơi:
-    "T" cây    "^" lều    "." ô trống/chưa quyết định    "x" ô cỏ (đã loại, không có lều)
+    "T" cây    "A" (hoặc "^") lều    "." ô trống/chưa quyết định    "x" ô cỏ (đã loại)
 Nếu lưới không có hàng/cột gợi ý thì GUI vẫn vẽ bàn chơi, chỉ không hiện số.
 
 Cảnh báo trực quan: hai lều chạm nhau (kể cả chéo) viền đỏ; số lều hàng/cột đúng thì
@@ -19,10 +19,12 @@ from gui import theme
 from gui.render_grid import fit_cells, mark_changed
 
 SYMBOLS = {"tree": {"T"}, "tent": {"^", "A"}, "grass": {"x", "X"}}
-GRASS_BG = (226, 240, 217)
-TREE_DARK = (34, 110, 52)
-TRUNK = (120, 78, 44)
-TENT_COL = (232, 120, 30)
+GRASS_A = (132, 214, 100)
+GRASS_B = (116, 200, 88)
+LEAF = (46, 168, 70)
+TRUNK = (150, 92, 52)
+TENT_COL = (255, 122, 52)
+TENT_STRIPE = (255, 236, 200)
 
 
 def _is_clue(v):
@@ -54,21 +56,55 @@ def _conflicts(board):
     return bad
 
 
+def _ow(cell):
+    return max(2, cell // 22)
+
+
 def _draw_tree(surf, x, y, cell):
-    cx = x + cell // 2
-    pygame.draw.rect(surf, TRUNK, (cx - cell // 14, y + int(cell * 0.62), max(3, cell // 7), int(cell * 0.26)))
-    pygame.draw.circle(surf, TREE_DARK, (cx, y + int(cell * 0.42)), int(cell * 0.30))
+    cx, ow = x + cell // 2, _ow(cell)
+    trunk = pygame.Rect(cx - cell // 10, y + int(cell * 0.58), max(5, cell // 5), int(cell * 0.30))
+    pygame.draw.rect(surf, theme.OUTLINE, trunk.inflate(2 * ow, 2 * ow), border_radius=3)
+    pygame.draw.rect(surf, TRUNK, trunk, border_radius=2)
+    for dx, dy, rad in [(-0.17, 0.46, 0.22), (0.17, 0.46, 0.22), (0.0, 0.30, 0.26)]:
+        pygame.draw.circle(surf, theme.OUTLINE, (cx + int(cell * dx), y + int(cell * dy)), int(cell * rad) + ow)
+    for dx, dy, rad in [(-0.17, 0.46, 0.22), (0.17, 0.46, 0.22), (0.0, 0.30, 0.26)]:
+        pygame.draw.circle(surf, LEAF, (cx + int(cell * dx), y + int(cell * dy)), int(cell * rad))
+    pygame.draw.circle(surf, theme.lighter(LEAF, 0.5), (cx - int(cell * 0.08), y + int(cell * 0.24)),
+                       max(2, int(cell * 0.07)))
 
 
 def _draw_tent(surf, x, y, cell):
-    pts = [(x + cell // 2, y + int(cell * 0.16)),
-           (x + int(cell * 0.86), y + int(cell * 0.82)),
-           (x + int(cell * 0.14), y + int(cell * 0.82))]
-    pygame.draw.polygon(surf, TENT_COL, pts)
-    door = [(x + cell // 2, y + int(cell * 0.46)),
-            (x + int(cell * 0.60), y + int(cell * 0.82)),
-            (x + int(cell * 0.40), y + int(cell * 0.82))]
-    pygame.draw.polygon(surf, (120, 54, 10), door)
+    ow = _ow(cell)
+    apex = (x + cell // 2, y + int(cell * 0.14))
+    left = (x + int(cell * 0.10), y + int(cell * 0.84))
+    right = (x + int(cell * 0.90), y + int(cell * 0.84))
+    pygame.draw.polygon(surf, TENT_COL, [apex, right, left])
+    stripe = [apex, (x + int(cell * 0.62), y + int(cell * 0.84)), (x + int(cell * 0.38), y + int(cell * 0.84))]
+    pygame.draw.polygon(surf, TENT_STRIPE, stripe)
+    door = [(x + cell // 2, y + int(cell * 0.50)), (x + int(cell * 0.60), y + int(cell * 0.84)),
+            (x + int(cell * 0.40), y + int(cell * 0.84))]
+    pygame.draw.polygon(surf, (130, 56, 24), door)
+    pygame.draw.polygon(surf, theme.OUTLINE, [apex, right, left], ow + 1)
+    pygame.draw.circle(surf, theme.YELLOW, apex, max(3, cell // 11))          # cờ nhỏ ở đỉnh lều
+    pygame.draw.circle(surf, theme.OUTLINE, apex, max(3, cell // 11), ow)
+
+
+def _draw_grass(surf, x, y, cell):
+    col = theme.darker(GRASS_A, 0.72)
+    for dx in (0.30, 0.50, 0.70):
+        base = (x + int(cell * dx), y + int(cell * 0.66))
+        pygame.draw.line(surf, col, base, (base[0] - 3, base[1] - max(5, cell // 6)), 3)
+        pygame.draw.line(surf, col, base, (base[0] + 3, base[1] - max(5, cell // 6)), 3)
+
+
+def _clue(surf, font, value, have, pos):
+    if have == value:
+        color = theme.GREEN_LIGHT
+    elif have > value:
+        color = (255, 120, 108)
+    else:
+        color = theme.WHITE
+    theme.text(surf, font, value, color, pos, "center", outline=theme.OUTLINE, ow=3)
 
 
 def draw(surf, rect, grid, changed, fonts):
@@ -85,28 +121,28 @@ def draw(surf, rect, grid, changed, fonts):
         for c in range(cols):
             x, y = x0 + c * cell, y0 + r * cell
             v = str(board[r][c])
-            pygame.draw.rect(surf, GRASS_BG, (x, y, cell, cell))
-            if v in SYMBOLS["tree"]:
+            pygame.draw.rect(surf, GRASS_A if (r + c) % 2 == 0 else GRASS_B, (x, y, cell, cell))
+            if v in SYMBOLS["grass"]:
+                _draw_grass(surf, x, y, cell)
+            elif v in SYMBOLS["tree"]:
                 _draw_tree(surf, x, y, cell)
             elif v in SYMBOLS["tent"]:
                 _draw_tent(surf, x, y, cell)
-            elif v in SYMBOLS["grass"]:
-                pygame.draw.circle(surf, (150, 190, 140), (x + cell // 2, y + cell // 2), max(2, cell // 12))
-            pygame.draw.rect(surf, (190, 210, 182), (x, y, cell, cell), 1)
-            if (r, c) in bad:
-                pygame.draw.rect(surf, theme.BAD, (x, y, cell, cell), 3)
-            elif (r, c) in changed:
-                mark_changed(surf, x, y, cell)
+    pygame.draw.rect(surf, theme.OUTLINE, (x0, y0, cols * cell, rows * cell), 4)
+
+    for (r, c) in bad:
+        x, y = x0 + c * cell, y0 + r * cell
+        pygame.draw.rect(surf, theme.OUTLINE, (x - 1, y - 1, cell + 2, cell + 2), 6, border_radius=6)
+        pygame.draw.rect(surf, theme.RED, (x + 1, y + 1, cell - 2, cell - 2), 3, border_radius=5)
+    for (r, c) in changed:
+        if (r, c) not in bad and r < rows and c < cols:
+            mark_changed(surf, x0 + c * cell, y0 + r * cell, cell)
 
     if has_clues:
-        font = fonts.sized(max(12, int(cell * 0.42)), bold=True)
+        font = fonts.sized(max(14, int(cell * 0.5)), bold=True)
         for r in range(rows):
             have = sum(1 for c in range(cols) if str(board[r][c]) in SYMBOLS["tent"])
-            color = theme.GOOD if have == row_clues[r] else (theme.BAD if have > row_clues[r] else theme.MUTED)
-            theme.text(surf, font, row_clues[r], color,
-                       (x0 + cols * cell + cell // 2, y0 + r * cell + cell // 2), "center")
+            _clue(surf, font, row_clues[r], have, (x0 + cols * cell + cell // 2, y0 + r * cell + cell // 2))
         for c in range(cols):
             have = sum(1 for r in range(rows) if str(board[r][c]) in SYMBOLS["tent"])
-            color = theme.GOOD if have == col_clues[c] else (theme.BAD if have > col_clues[c] else theme.MUTED)
-            theme.text(surf, font, col_clues[c], color,
-                       (x0 + c * cell + cell // 2, y0 + rows * cell + cell // 2), "center")
+            _clue(surf, font, col_clues[c], have, (x0 + c * cell + cell // 2, y0 + rows * cell + cell // 2))

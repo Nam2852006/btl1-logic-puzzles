@@ -41,11 +41,11 @@ RENDERERS = {"pipes": render_pipes, "tents": render_tents}
 PUZZLE_NAME = {"pipes": "Pipes", "tents": "Tents", "nqueens": "N-Queens"}
 ALGO_NAME = {"dfs": "DFS", "bfs": "BrFS", "astar": "A*", "hc": "Hill Climbing"}
 EVENT_LABEL = {
-    "start": "Trạng thái xuất phát",
-    "expand": "Mở rộng một nút",
-    "move": "Chuyển sang láng giềng tốt nhất",
-    "restart": "Random restart (bắt đầu lại)",
-    "result": "Kết quả cuối cùng",
+    "start": "Start state",
+    "expand": "Expand a node",
+    "move": "Move to best neighbor",
+    "restart": "Random restart",
+    "result": "Final result",
 }
 
 
@@ -77,7 +77,7 @@ class Player:
             self.frames.append(dict(step=None, event="result", grid=self.result["grid"],
                                     h=0, frontier=None, depth=None))
         if not self.frames or self.meta is None:
-            raise ValueError("file trace rỗng hoặc thiếu dòng meta")
+            raise ValueError("empty trace file or missing meta line")
         self.idx = 0
         self.playing = False
         self.speed_i = 3
@@ -126,59 +126,82 @@ class Player:
 # Vẽ màn hình phát lại
 # ----------------------------------------------------------------------
 def draw_sparkline(surf, rect, player, fonts):
-    pygame.draw.rect(surf, (248, 249, 251), rect, border_radius=6)
-    pygame.draw.rect(surf, theme.LINE, rect, 1, border_radius=6)
+    theme.block(surf, rect, (255, 252, 238), radius=10, width=3, shadow=0)
     vals = [_finite(f["h"]) for f in player.frames]
     finite = [v for v in vals if v is not None]
     lo, hi = (min(finite), max(finite)) if finite else (0, 0)
     hs = [hi if v is None else v for v in vals]      # ngõ cụt / thiếu h: vẽ ở đỉnh biểu đồ
     span = (hi - lo) or 1
-    w, h = rect.w - 16, rect.h - 24
+    w, h = rect.w - 24, rect.h - 38
     n = len(hs)
 
     def pt(i):
-        return (rect.x + 8 + (i / max(n - 1, 1)) * w, rect.y + 8 + (1 - (hs[i] - lo) / span) * h)
+        return (rect.x + 12 + (i / max(n - 1, 1)) * w, rect.y + 10 + (1 - (hs[i] - lo) / span) * h)
 
     stride = max(1, n // max(w, 1))
     idxs = list(range(0, n, stride))
     for i in idxs:
         if player.frames[i]["event"] == "restart":
             x = pt(i)[0]
-            pygame.draw.line(surf, (235, 200, 200), (x, rect.y + 6), (x, rect.bottom - 16), 1)
+            pygame.draw.line(surf, (240, 150, 140), (x, rect.y + 8), (x, rect.bottom - 24), 2)
     if len(idxs) > 1:
-        pygame.draw.lines(surf, theme.ACCENT, False, [pt(i) for i in idxs], 2)
-    pygame.draw.circle(surf, theme.BAD, pt(player.idx), 5)
-    text(surf, fonts.sized(12), f"h theo thời gian (min {lo:g}, max {hi:g})", theme.MUTED,
-         (rect.x + 8, rect.bottom - 16))
+        pts = [pt(i) for i in idxs]
+        pygame.draw.lines(surf, theme.OUTLINE, False, pts, 7)
+        pygame.draw.lines(surf, theme.BLUE, False, pts, 4)
+    cx, cy = pt(player.idx)
+    pygame.draw.circle(surf, theme.OUTLINE, (cx, cy), 9)
+    pygame.draw.circle(surf, theme.YELLOW, (cx, cy), 6)
+    text(surf, fonts.sized(13), f"h over time (min {lo:g}, max {hi:g})", theme.MUTED,
+         (rect.x + 12, rect.bottom - 22))
+
+
+def draw_progress(surf, rect, frac):
+    """Thanh tiến độ kiểu màn chơi: chạy từ trái sang phải, có ngôi sao ở đích."""
+    theme.block(surf, rect, (255, 252, 238), radius=rect.h // 2, width=3, shadow=0)
+    inner = rect.inflate(-8, -8)
+    fill = pygame.Rect(inner.x, inner.y, int((inner.w - inner.h) * frac) + inner.h, inner.h)
+    pygame.draw.rect(surf, theme.GREEN, fill, border_radius=inner.h // 2)
+    pygame.draw.rect(surf, theme.GREEN_LIGHT, fill.inflate(-8, -inner.h // 2), border_radius=3)
+    theme.star(surf, (rect.right - 2, rect.centery), rect.h * 0.9,
+               theme.YELLOW if frac >= 1 else (214, 200, 150))
 
 
 def draw_panel(surf, player, fonts):
-    pygame.draw.rect(surf, theme.PANEL, PANEL, border_radius=10)
-    pygame.draw.rect(surf, theme.LINE, PANEL, 1, border_radius=10)
+    theme.block(surf, PANEL, theme.CREAM, radius=16, width=4, shadow=6)
     m, f = player.meta, player.frames[player.idx]
-    x, y = PANEL.x + 18, PANEL.y + 16
 
-    text(surf, fonts.sized(24, True), player.title(), theme.INK, (x, y)); y += 34
+    banner = pygame.Rect(PANEL.x, PANEL.y, PANEL.w, 74)
+    pygame.draw.rect(surf, theme.RED, banner, border_top_left_radius=16, border_top_right_radius=16)
+    pygame.draw.rect(surf, theme.lighter(theme.RED, 0.35),
+                     pygame.Rect(banner.x + 10, banner.y + 6, banner.w - 20, 8), border_radius=4)
+    pygame.draw.line(surf, theme.OUTLINE, (banner.x, banner.bottom), (banner.right, banner.bottom), 4)
+    pygame.draw.rect(surf, theme.OUTLINE, PANEL, 4, border_radius=16)
+    text(surf, fonts.sized(26, True), player.title(), theme.WHITE, (banner.centerx, banner.y + 24),
+         "center", outline=theme.OUTLINE, ow=3)
     sub = f"{os.path.basename(str(m.get('input', '')))}  {m.get('size', '')}".strip()
-    text(surf, fonts.sized(15), sub, theme.MUTED, (x, y)); y += 34
+    text(surf, fonts.sized(15, True), sub, theme.WHITE, (banner.centerx, banner.y + 54),
+         "center", outline=theme.OUTLINE, ow=2)
 
+    x, y = PANEL.x + 20, PANEL.y + 88
     rec = len([fr for fr in player.frames if fr["event"] != "result"])
     cur = player.idx + 1 if f["event"] != "result" else rec
-    text(surf, fonts.sized(15), "Bước", theme.MUTED, (x, y))
-    text(surf, fonts.sized(26, True), f"{cur} / {rec}", theme.INK, (x, y + 18))
-    y += 62
+    text(surf, fonts.sized(15, True), "STEP", theme.MUTED, (x, y))
+    text(surf, fonts.sized(28, True), f"{cur} / {rec}", theme.INK, (x, y + 16))
+    draw_progress(surf, pygame.Rect(x + 130, y + 24, PANEL.w - 40 - 130 - 18, 22),
+                  player.idx / max(player.n - 1, 1))
+    y += 58
     if m.get("truncated"):
-        text(surf, fonts.sized(13), f"Trace đã cắt bớt: chỉ lưu {m.get('recorded_steps')} / "
-             f"{m.get('total_steps')} bước", theme.WARN, (x, y)); y += 22
+        text(surf, fonts.sized(13, True), f"Trace truncated: only {m.get('recorded_steps')} / "
+             f"{m.get('total_steps')} steps saved", theme.WARN, (x, y)); y += 22
 
-    text(surf, fonts.sized(15), "Sự kiện", theme.MUTED, (x, y))
+    text(surf, fonts.sized(15, True), "EVENT", theme.MUTED, (x, y))
     ev_color = theme.BAD if f["event"] == "restart" else (theme.GOOD if f["event"] == "result" else theme.INK)
-    text(surf, fonts.sized(17, True), EVENT_LABEL.get(f["event"], f["event"]), ev_color, (x, y + 18))
-    y += 54
+    text(surf, fonts.sized(18, True), EVENT_LABEL.get(f["event"], f["event"]), ev_color, (x, y + 18))
+    y += 52
 
     def stat(label, value, col, color=theme.INK):
-        text(surf, fonts.sized(14), label, theme.MUTED, (x + col * 190, y))
-        text(surf, fonts.sized(22, True), "-" if value is None else value, color, (x + col * 190, y + 18))
+        text(surf, fonts.sized(14, True), label.upper(), theme.MUTED, (x + col * 188, y))
+        text(surf, fonts.sized(22, True), "-" if value is None else value, color, (x + col * 188, y + 18))
 
     cur_h = _finite(f["h"])
     prev_h = _finite(player.frames[player.idx - 1]["h"]) if player.idx else None
@@ -188,70 +211,75 @@ def draw_panel(surf, player, fonts):
     if cur_h is not None:
         h_text = f"{cur_h:g}"
     elif _is_dead_end(f["h"]):
-        h_text, h_color = "vô cùng (ngõ cụt)", theme.BAD
+        h_text, h_color = "dead end (inf)", theme.BAD
     else:
         h_text = None
-    stat("Giá trị h", h_text, 0, h_color)
+    stat("h value", h_text, 0, h_color)
     stat("Frontier", f["frontier"], 1)
-    y += 56
-    stat("Độ sâu", f["depth"], 0)
+    y += 54
+    stat("Depth", f["depth"], 0)
     nodes = f["step"] if f["step"] is not None else (player.result or {}).get("nodes_expanded")
-    stat("Nút đã mở rộng", nodes, 1)
-    y += 56
+    stat("Nodes expanded", nodes, 1)
+    y += 54
     if player.meta.get("algorithm") == "hc":
-        stat("Số lần restart", player.restarts_upto[player.idx], 0)
-        y += 56
+        stat("Restarts", player.restarts_upto[player.idx], 0)
+        y += 54
 
-    draw_sparkline(surf, pygame.Rect(PANEL.x + 14, y, PANEL.w - 28, 96), player, fonts)
-    y += 108
+    draw_sparkline(surf, pygame.Rect(PANEL.x + 16, y, PANEL.w - 32, 92), player, fonts)
+    y += 104
 
     if player.idx >= player.n - 1 and player.result is not None:
         ok = player.result.get("success")
-        color = theme.GOOD if ok else theme.BAD
-        box = pygame.Rect(PANEL.x + 14, y, PANEL.w - 28, 56)
-        pygame.draw.rect(surf, color, box, border_radius=8)
-        msg = "TÌM THẤY LỜI GIẢI" if ok else "KHÔNG TÌM THẤY LỜI GIẢI"
-        text(surf, fonts.sized(18, True), msg, (255, 255, 255), (box.centerx, box.y + 16), "midtop")
-        extra = f"{player.result.get('nodes_expanded')} nút mở rộng"
+        box = pygame.Rect(PANEL.x + 16, y, PANEL.w - 32, 58)
+        theme.block(surf, box, theme.GREEN if ok else theme.RED, radius=12, width=3, shadow=4)
+        msg = "SOLUTION FOUND!" if ok else "NO SOLUTION FOUND"
+        text(surf, fonts.sized(19, True), msg, theme.WHITE, (box.centerx, box.y + 18), "center",
+             outline=theme.OUTLINE, ow=3)
+        extra = f"{player.result.get('nodes_expanded')} nodes expanded"
         if player.meta.get("algorithm") == "hc":
             extra += f", {player.result.get('restarts')} restart"
-        text(surf, fonts.sized(13), extra, (255, 255, 255), (box.centerx, box.y + 38), "midtop")
+        text(surf, fonts.sized(13, True), extra, theme.WHITE, (box.centerx, box.y + 42), "center",
+             outline=theme.OUTLINE, ow=2)
+        if ok:
+            theme.star(surf, (box.x + 4, box.y + 4), 15)
+            theme.star(surf, (box.right - 4, box.y + 4), 15)
+
+
+BTN_COLORS = {"play": theme.GREEN, "slower": theme.ORANGE, "faster": theme.ORANGE,
+              "shot": theme.BLUE, "menu": theme.RED}
 
 
 def make_buttons(player):
-    labels = [("first", "|<"), ("prev", "<"), ("play", "Dừng" if player.playing else "Phát"),
+    labels = [("first", "|<"), ("prev", "<"), ("play", "Pause" if player.playing else "Play"),
               ("next", ">"), ("last", ">|"), ("slower", "-"), ("faster", "+"),
-              ("shot", "Chụp ảnh"), ("menu", "Menu")]
+              ("shot", "Snapshot"), ("menu", "Menu")]
     widths = {"play": 90, "shot": 110, "menu": 90}
-    x, out = BAR.x, []
+    x, out = BAR.x + 8, []
     for key, label in labels:
         w = widths.get(key, 56)
         if key == "slower":
             x += 24
-        out.append((key, label, pygame.Rect(x, BAR.y + 10, w, 44)))
-        x += w + 10
+        out.append((key, label, pygame.Rect(x, BAR.y + 8, w, 40)))
+        x += w + 12
         if key == "faster":
             x += 24
     return out
 
 
 def draw_bar(surf, player, fonts):
-    pygame.draw.rect(surf, theme.PANEL, BAR, border_radius=10)
-    pygame.draw.rect(surf, theme.LINE, BAR, 1, border_radius=10)
+    theme.block(surf, BAR, theme.CREAM, radius=16, width=4, shadow=5)
+    mouse = pygame.mouse.get_pos()
     for key, label, rect in make_buttons(player):
-        main = key == "play"
-        pygame.draw.rect(surf, theme.ACCENT if main else (238, 240, 244), rect, border_radius=8)
-        text(surf, fonts.sized(17, True), label, (255, 255, 255) if main else theme.INK,
-             rect.center, "center")
-    text(surf, fonts.sized(15), "Tốc độ", theme.MUTED, (BAR.right - 20, BAR.y + 12), "topright")
-    text(surf, fonts.sized(18, True), f"{SPEEDS[player.speed_i]} bước/giây", theme.INK,
-         (BAR.right - 20, BAR.y + 32), "topright")
+        theme.button(surf, rect, BTN_COLORS.get(key, (150, 130, 190)), label, fonts.sized(17, True),
+                     hover=rect.collidepoint(mouse))
+    text(surf, fonts.sized(14, True), "SPEED", theme.MUTED, (BAR.right - 20, BAR.y + 8), "topright")
+    text(surf, fonts.sized(18, True), f"{SPEEDS[player.speed_i]} steps/s", theme.INK,
+         (BAR.right - 20, BAR.y + 26), "topright")
 
 
 def draw_player(surf, player, fonts):
-    surf.fill(theme.BG)
-    pygame.draw.rect(surf, theme.PANEL, BOARD, border_radius=10)
-    pygame.draw.rect(surf, theme.LINE, BOARD, 1, border_radius=10)
+    theme.sky(surf)
+    theme.block(surf, BOARD, theme.CREAM, radius=16, width=4, shadow=6)
     renderer = RENDERERS.get(player.meta.get("puzzle"), render_grid)
     renderer.draw(surf, BOARD.inflate(-32, -32), player.frames[player.idx]["grid"],
                   player.changed_cells(), fonts)
@@ -294,30 +322,34 @@ MENU_LIST = pygame.Rect(40, 130, WIN_W - 80, WIN_H - 190)
 
 
 def draw_menu(surf, items, sel, scroll, fonts, error):
-    surf.fill(theme.BG)
-    text(surf, fonts.sized(30, True), "Demo tìm kiếm step-by-step", theme.INK, (40, 36))
-    text(surf, fonts.sized(16), "Chọn một file trace (↑/↓ + Enter, hoặc bấm chuột). "
-         "Tạo trace mới: python main.py ... --trace", theme.MUTED, (40, 80))
+    theme.sky(surf)
+    text(surf, fonts.sized(38, True), "Step-by-step Search Demo", theme.YELLOW, (40, 30),
+         outline=theme.OUTLINE, ow=4)
+    text(surf, fonts.sized(16, True), "Pick a level (Up/Down keys + Enter, or click).  "
+         "Make new traces: python main.py ... --trace", theme.INK, (40, 86))
     if error:
-        text(surf, fonts.sized(15), error, theme.BAD, (40, 104))
-    pygame.draw.rect(surf, theme.PANEL, MENU_LIST, border_radius=10)
-    pygame.draw.rect(surf, theme.LINE, MENU_LIST, 1, border_radius=10)
+        text(surf, fonts.sized(15, True), error, theme.BAD, (40, 108))
+    theme.block(surf, MENU_LIST, theme.CREAM, radius=16, width=4, shadow=6)
     if not items:
-        text(surf, fonts.sized(18), "Chưa có file trace nào trong results/traces/ hoặc gui/demo_traces/.",
+        text(surf, fonts.sized(18, True), "No trace files in results/traces/ or gui/demo_traces/.",
              theme.MUTED, MENU_LIST.center, "center")
         return
     clip = surf.get_clip()
-    surf.set_clip(MENU_LIST)
+    surf.set_clip(MENU_LIST.inflate(-8, -8))
     for i, (path, meta) in enumerate(items):
-        row = pygame.Rect(MENU_LIST.x + 6, MENU_LIST.y + 6 + (i - scroll) * ROW_H, MENU_LIST.w - 12, ROW_H - 4)
+        row = pygame.Rect(MENU_LIST.x + 12, MENU_LIST.y + 10 + (i - scroll) * ROW_H,
+                          MENU_LIST.w - 24, ROW_H - 6)
         if i == sel:
-            pygame.draw.rect(surf, (225, 235, 255), row, border_radius=8)
+            theme.block(surf, row, theme.YELLOW, radius=10, width=3, shadow=0)
+            theme.star(surf, (row.x + 22, row.centery), 12)
+        else:
+            pygame.draw.rect(surf, (255, 238, 196) if i % 2 == 0 else (250, 228, 176), row, border_radius=10)
         label = (f"{PUZZLE_NAME.get(meta.get('puzzle'), meta.get('puzzle'))}  -  "
                  f"{ALGO_NAME.get(meta.get('algorithm'), meta.get('algorithm'))}")
-        text(surf, fonts.sized(18, True), label, theme.INK, (row.x + 14, row.centery), "midleft")
+        text(surf, fonts.sized(18, True), label, theme.INK, (row.x + 46, row.centery), "midleft")
         info = (f"{os.path.basename(str(meta.get('input', '')))}   {meta.get('size', '')}   "
-                f"{meta.get('recorded_steps', '?')} bước" + ("  (đã cắt)" if meta.get("truncated") else ""))
-        text(surf, fonts.sized(15), info, theme.MUTED, (row.x + 360, row.centery), "midleft")
+                f"{meta.get('recorded_steps', '?')} steps" + ("  (truncated)" if meta.get("truncated") else ""))
+        text(surf, fonts.sized(15, True), info, theme.MUTED, (row.x + 390, row.centery), "midleft")
     surf.set_clip(clip)
 
 
@@ -332,7 +364,7 @@ def run_gui(initial=None):
     pygame.init()
     pygame.key.set_repeat(300, 50)
     screen = pygame.display.set_mode((WIN_W, WIN_H))
-    pygame.display.set_caption("BTL1 - Demo tìm kiếm step-by-step")
+    pygame.display.set_caption("BTL1 - Step-by-step Search Demo")
     fonts = Fonts()
     clock = pygame.time.Clock()
 
@@ -342,7 +374,7 @@ def run_gui(initial=None):
         try:
             player = Player(initial)
         except Exception as e:  # noqa: BLE001 - hiển thị lỗi thay vì sập
-            error = f"Không mở được {initial}: {e}"
+            error = f"Cannot open {initial}: {e}"
 
     def open_item(i):
         nonlocal player, error
@@ -350,7 +382,7 @@ def run_gui(initial=None):
             player = Player(items[i][0])
             error = ""
         except Exception as e:  # noqa: BLE001
-            error = f"Không mở được {os.path.basename(items[i][0])}: {e}"
+            error = f"Cannot open {os.path.basename(items[i][0])}: {e}"
 
     def press(key):
         if key == "first": player.goto(0)
@@ -361,7 +393,7 @@ def run_gui(initial=None):
         elif key == "slower": player.speed_i = max(0, player.speed_i - 1)
         elif key == "faster": player.speed_i = min(len(SPEEDS) - 1, player.speed_i + 1)
         elif key == "shot":
-            print("Đã lưu ảnh:", save_screenshot(screen, player))
+            print("Saved screenshot:", save_screenshot(screen, player))
         elif key == "menu":
             return "menu"
         return None
@@ -429,7 +461,7 @@ def main():
         player = Player(args.trace)
         player.goto(args.step - 1 if args.step else player.n - 1)
         draw_player(screen, player, Fonts())
-        print("Đã lưu ảnh:", save_screenshot(screen, player, args.screenshot))
+        print("Saved screenshot:", save_screenshot(screen, player, args.screenshot))
         return
     run_gui(args.trace)
 
